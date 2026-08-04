@@ -37,8 +37,8 @@ const emptyJob = () => ({ company: '', phone: '', address: '', dates: '', title:
 const emptyRef = () => ({ name: '', address: '', phone: '' });
 
 const INITIAL = {
-  fullName: '', dateOfApplication: new Date().toISOString().slice(0, 10),
-  address: '', phone: '', email: '', ssn: '', dob: '', emergencyContact: '',
+  firstName: '', lastName: '', dateOfApplication: new Date().toISOString().slice(0, 10),
+  address: '', phone: '', email: '', ssn: '', dob: '', emergencyContact: '', emergencyContactPhone: '',
   position: '', therapyType: '', credentials: [], salaryDesired: '',
   languages: [], hoursPerWeek: '', willingToWork: [], daysAvailable: [],
   officeSkills: [], howDidYouHear: '',
@@ -153,12 +153,16 @@ export default function AllHoursApp() {
     const e = {};
 
     if (step === 1) {
-      if (!form.fullName.trim()) {
-        e.fullName = 'Full name is required';
-      } else if (!hasLetters(form.fullName)) {
-        e.fullName = 'Please enter your real full name';
-      } else if (!hasFirstAndLast(form.fullName)) {
-        e.fullName = 'Please enter both first and last name';
+      if (!form.firstName.trim()) {
+        e.firstName = 'First name is required';
+      } else if (!hasLetters(form.firstName)) {
+        e.firstName = 'Please enter a valid first name';
+      }
+
+      if (!form.lastName.trim()) {
+        e.lastName = 'Last name is required';
+      } else if (!hasLetters(form.lastName)) {
+        e.lastName = 'Please enter a valid last name';
       }
 
       if (!form.address.trim()) {
@@ -198,9 +202,19 @@ export default function AllHoursApp() {
       }
 
       if (!form.emergencyContact.trim()) {
-        e.emergencyContact = 'Emergency contact is required';
+        e.emergencyContact = 'Emergency contact name is required';
       } else if (!hasLetters(form.emergencyContact)) {
-        e.emergencyContact = 'Please enter a name and phone number for your emergency contact';
+        e.emergencyContact = 'Please enter a valid name';
+      } else if (!hasFirstAndLast(form.emergencyContact)) {
+        e.emergencyContact = 'Please enter both first and last name';
+      }
+
+      if (!form.emergencyContactPhone.trim()) {
+        e.emergencyContactPhone = 'Emergency contact phone is required';
+      } else if (!isValidPhone(form.emergencyContactPhone)) {
+        e.emergencyContactPhone = 'Please enter a valid 10-digit phone number';
+      } else if (isAllSameChar(form.emergencyContactPhone)) {
+        e.emergencyContactPhone = 'Please enter a real phone number';
       }
     }
 
@@ -341,7 +355,7 @@ export default function AllHoursApp() {
         <div style={{ width: 80, height: 80, borderRadius: '50%', background: C.lowLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 40 }}>✅</div>
         <h2 style={{ fontSize: 26, color: C.primary, marginBottom: 12, fontFamily: font }}>Application Submitted!</h2>
         <p style={{ color: C.textMid, lineHeight: 1.6, marginBottom: 20, fontSize: 15 }}>
-          Thank you, <strong>{form.fullName}</strong>. We have received your application and our HR team will be in touch shortly.
+          Thank you, <strong>{form.firstName} {form.lastName}</strong>. We have received your application and our HR team will be in touch shortly.
         </p>
         <div style={{ background: C.primaryLight, borderRadius: 12, padding: '14px 16px', fontSize: 13, color: C.textMid, lineHeight: 1.6 }}>
           Questions? Call <strong style={{ color: C.primary }}>(978) 933-7131</strong><br />
@@ -394,12 +408,16 @@ export default function AllHoursApp() {
             <h2 style={{ fontSize: 22, color: C.primary, marginBottom: 4, fontFamily: font }}>Personal Information</h2>
             <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24, lineHeight: 1.5 }}>All information is kept confidential. Fields marked * are required.</p>
 
-            <Field label="Full Name" required error={errors.fullName}>
-              <div data-error={!!errors.fullName}>
-                <input value={form.fullName} onChange={e => { set('fullName', e.target.value); setErrors(p => { const n={...p}; delete n.fullName; return n; }); }}
-                  placeholder="First and last name" style={inputStyle(!!errors.fullName)} />
-              </div>
-            </Field>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="First Name" required error={errors.firstName}>
+                <input value={form.firstName} onChange={e => { set('firstName', e.target.value); setErrors(p => { const n={...p}; delete n.firstName; return n; }); }}
+                  placeholder="First name" style={inputStyle(!!errors.firstName)} />
+              </Field>
+              <Field label="Last Name" required error={errors.lastName}>
+                <input value={form.lastName} onChange={e => { set('lastName', e.target.value); setErrors(p => { const n={...p}; delete n.lastName; return n; }); }}
+                  placeholder="Last name" style={inputStyle(!!errors.lastName)} />
+              </Field>
+            </div>
 
             <Field label="Present Address" required error={errors.address}>
               <input value={form.address} onChange={e => { set('address', e.target.value); setErrors(p => { const n={...p}; delete n.address; return n; }); }}
@@ -408,8 +426,15 @@ export default function AllHoursApp() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Field label="Phone Number" required error={errors.phone}>
-                <input value={form.phone} onChange={e => { set('phone', e.target.value); setErrors(p => { const n={...p}; delete n.phone; return n; }); }}
-                  placeholder="(978) 000-0000" type="tel" style={inputStyle(!!errors.phone)} />
+                <input value={form.phone} onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  let formatted = digits;
+                  if (digits.length > 6) formatted = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+                  else if (digits.length > 3) formatted = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+                  set('phone', formatted);
+                  setErrors(p => { const n={...p}; delete n.phone; return n; });
+                }}
+                  placeholder="(978) 000-0000" type="tel" maxLength={14} style={inputStyle(!!errors.phone)} />
               </Field>
               <Field label="Email" required error={errors.email}>
                 <input value={form.email} onChange={e => { set('email', e.target.value); setErrors(p => { const n={...p}; delete n.email; return n; }); }}
@@ -440,10 +465,23 @@ export default function AllHoursApp() {
               </Field>
             </div>
 
-            <Field label="Emergency Contact — Name & Phone" required error={errors.emergencyContact}>
-              <input value={form.emergencyContact} onChange={e => { set('emergencyContact', e.target.value); setErrors(p => { const n={...p}; delete n.emergencyContact; return n; }); }}
-                placeholder="Jane Doe — (978) 000-0000" style={inputStyle(!!errors.emergencyContact)} />
-            </Field>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Emergency Contact Name" required error={errors.emergencyContact}>
+                <input value={form.emergencyContact} onChange={e => { set('emergencyContact', e.target.value); setErrors(p => { const n={...p}; delete n.emergencyContact; return n; }); }}
+                  placeholder="First and last name" style={inputStyle(!!errors.emergencyContact)} />
+              </Field>
+              <Field label="Emergency Contact Phone" required error={errors.emergencyContactPhone}>
+                <input value={form.emergencyContactPhone} onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  let formatted = digits;
+                  if (digits.length > 6) formatted = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+                  else if (digits.length > 3) formatted = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+                  set('emergencyContactPhone', formatted);
+                  setErrors(p => { const n={...p}; delete n.emergencyContactPhone; return n; });
+                }}
+                  placeholder="(978) 000-0000" type="tel" maxLength={14} style={inputStyle(!!errors.emergencyContactPhone)} />
+              </Field>
+            </div>
 
             <div style={{ background: C.primaryLight, borderRadius: 12, padding: '12px 14px', fontSize: 12, color: C.textMid, lineHeight: 1.6, marginTop: 8 }}>
               🔒 Your information is encrypted and kept strictly confidential in accordance with applicable privacy laws.
