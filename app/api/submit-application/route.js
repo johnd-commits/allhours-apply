@@ -3,6 +3,19 @@ import { google } from 'googleapis';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+function getTimestamp() {
+  return new Date().toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).replace(',', '');
+}
+
 async function appendToSheet(f) {
   const auth = new google.auth.GoogleAuth({
     credentials: {
@@ -15,7 +28,7 @@ async function appendToSheet(f) {
   const sheets = google.sheets({ version: 'v4', auth });
 
   const row = [
-    new Date().toISOString(),                                          // Timestamp
+    getTimestamp(),                                                    // Timestamp
     f.fullName,                                                        // Full Name
     f.dateOfApplication,                                               // Date of Application
     f.address,                                                         // Present Address
@@ -107,29 +120,6 @@ async function appendToSheet(f) {
   });
 }
 
-export async function POST(req) {
-  try {
-    const f = await req.json();
-
-    // Run both simultaneously
-    await Promise.all([
-      appendToSheet(f),
-      resend.emails.send({
-        from: 'Applications <onboarding@resend.dev>',
-        to: process.env.HR_EMAIL,
-        replyTo: f.email,
-        subject: `New Application: ${f.fullName} — ${f.position || 'Position not specified'}`,
-        html: buildEmailHtml(f),
-      }),
-    ]);
-
-    return Response.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    return Response.json({ error: err.message }, { status: 500 });
-  }
-}
-
 function buildEmailHtml(f) {
   const section = (title, rows) => `
     <h2 style="background:#1B3B6F;color:#fff;padding:10px 16px;border-radius:6px;font-size:15px;margin:24px 0 8px;">${title}</h2>
@@ -148,6 +138,7 @@ function buildEmailHtml(f) {
       <div style="background:#1B3B6F;padding:24px;border-radius:10px 10px 0 0;text-align:center;">
         <h1 style="color:#F5A623;margin:0;font-size:22px;">New Employment Application</h1>
         <p style="color:#fff;margin:8px 0 0;font-size:14px;">All Hours Home Healthcare LLC</p>
+        <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">Received: ${getTimestamp()} ET</p>
       </div>
       <div style="padding:0 0 24px;background:#fff;border:1px solid #ddd;border-radius:0 0 10px 10px;">
 
@@ -178,7 +169,7 @@ function buildEmailHtml(f) {
         ])}
 
         ${section('Background & Driving', [
-          ['Driver\'s License', f.hasDriversLicense],
+          ["Driver's License", f.hasDriversLicense],
           ['License #', f.licenseNumber],
           ['License State', f.licenseState],
           ['License Type', f.licenseType],
@@ -212,7 +203,7 @@ function buildEmailHtml(f) {
 
         ${section('References & Licensing', [
           ['Capable of Job', f.capableOfJob],
-          ['Requirement Can\'t Meet', f.jobRequirementCantMeet],
+          ["Requirement Can't Meet", f.jobRequirementCantMeet],
           ['State Licenses', f.stateLicenses],
           ['Special Skills', f.specialSkills],
         ])}
@@ -235,8 +226,30 @@ function buildEmailHtml(f) {
 
       </div>
       <p style="text-align:center;font-size:12px;color:#999;margin-top:16px;">
-        Submitted via AllHours Apply · ${new Date().toLocaleString()}
+        Submitted via AllHours Apply · ${getTimestamp()} ET
       </p>
     </div>
   `;
+}
+
+export async function POST(req) {
+  try {
+    const f = await req.json();
+
+    await Promise.all([
+      appendToSheet(f),
+      resend.emails.send({
+        from: 'Applications <onboarding@resend.dev>',
+        to: process.env.HR_EMAIL,
+        replyTo: f.email,
+        subject: `New Application: ${f.fullName} — ${f.position || 'Position not specified'}`,
+        html: buildEmailHtml(f),
+      }),
+    ]);
+
+    return Response.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return Response.json({ error: err.message }, { status: 500 });
+  }
 }

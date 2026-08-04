@@ -30,7 +30,7 @@ const SHIFT_TYPES = ['Full-time', 'Part-time', 'Per Diem', 'Overnight', 'Weekend
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const OFFICE_SKILLS = ['Microsoft Word', 'Microsoft Excel', 'Electronic Health Records (EHR)', 'Medical billing', 'Scheduling software', 'None'];
 const HOW_HEARD = ['Indeed', 'LinkedIn', 'Facebook', 'Instagram', 'Google', 'Employee referral', 'Job fair', 'School / nursing program', 'Other'];
-const EDUCATION = ['High School Diploma / GED', 'Some College', 'Associate\'s Degree', 'Bachelor\'s Degree', 'Master\'s Degree', 'Doctorate', 'Vocational / Trade School', 'Other'];
+const EDUCATION = ["High School Diploma / GED", "Some College", "Associate's Degree", "Bachelor's Degree", "Master's Degree", "Doctorate", "Vocational / Trade School", "Other"];
 const LICENSE_TYPES = ['Class A', 'Class B', 'Class C', 'Class D', 'Motorcycle', 'CDL'];
 
 const emptyJob = () => ({ company: '', phone: '', address: '', dates: '', title: '', description: '', startingPay: '', reasonLeaving: '' });
@@ -58,6 +58,22 @@ const INITIAL = {
   eSignature: '', confirmEmail: '',
 };
 
+// ── Validation helpers ────────────────────────────────────────────────────────
+const isAllSameChar = (str) => {
+  const digits = str.replace(/\D/g, '');
+  return digits.length > 3 && new Set(digits).size <= 1;
+};
+const isValidPhone = (p) => p.replace(/\D/g, '').length === 10;
+const isValidEmail = (em) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em);
+const isValidSSN = (s) => /^\d{3}-?\d{2}-?\d{4}$/.test(s.replace(/[\s]/g, ''));
+const isAdult = (dob) => {
+  if (!dob) return false;
+  const age = (new Date() - new Date(dob)) / (1000 * 60 * 60 * 24 * 365.25);
+  return age >= 18;
+};
+const hasLetters = (str) => /[a-zA-Z]/.test(str);
+const hasFirstAndLast = (str) => str.trim().split(/\s+/).length >= 2;
+
 function Pill({ label, selected, onClick }) {
   return (
     <button type="button" onClick={onClick} style={{
@@ -71,36 +87,49 @@ function Pill({ label, selected, onClick }) {
   );
 }
 
-function Field({ label, error, children }) {
+function Field({ label, error, required, children }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: C.textMid, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, fontFamily: font }}>{label}</label>
+      <label style={{
+        display: 'block', fontSize: 12, fontWeight: 700, color: error ? C.high : C.textMid,
+        textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, fontFamily: font
+      }}>
+        {label}{required && <span style={{ color: C.high }}> *</span>}
+      </label>
       {children}
-      {error && <div style={{ fontSize: 12, color: C.high, marginTop: 4, fontFamily: font }}>{error}</div>}
+      {error && (
+        <div style={{ fontSize: 12, color: C.high, marginTop: 5, fontFamily: font, display: 'flex', alignItems: 'center', gap: 4 }}>
+          ⚠ {error}
+        </div>
+      )}
     </div>
   );
 }
 
-const inputStyle = {
+const inputStyle = (hasError) => ({
   width: '100%', boxSizing: 'border-box', padding: '11px 14px',
-  background: C.inputBg, border: `1px solid transparent`,
+  background: C.inputBg,
+  border: `1.5px solid ${hasError ? C.high : 'transparent'}`,
   borderRadius: 10, fontSize: 14, fontFamily: font,
   color: C.text, outline: 'none', display: 'block',
-};
+});
 
-const textareaStyle = { ...inputStyle, resize: 'vertical', lineHeight: 1.5 };
+const textareaStyle = (hasError) => ({ ...inputStyle(hasError), resize: 'vertical', lineHeight: 1.5 });
 
-const yesNo = (val, onChange) => (
-  <div style={{ display: 'flex', gap: 8 }}>
-    {['Yes', 'No'].map(v => (
-      <button key={v} type="button" onClick={() => onChange(v)} style={{
-        padding: '9px 20px', borderRadius: 10, cursor: 'pointer',
-        border: `1px solid ${val === v ? C.primary : C.border}`,
-        background: val === v ? C.primary : C.surface,
-        color: val === v ? '#fff' : C.textMid,
-        fontSize: 14, fontWeight: 600, fontFamily: font,
-      }}>{v}</button>
-    ))}
+const yesNo = (val, onChange, error) => (
+  <div>
+    <div style={{ display: 'flex', gap: 8 }}>
+      {['Yes', 'No'].map(v => (
+        <button key={v} type="button" onClick={() => onChange(v)} style={{
+          padding: '9px 24px', borderRadius: 10, cursor: 'pointer',
+          border: `1.5px solid ${val === v ? C.primary : error ? C.high : C.border}`,
+          background: val === v ? C.primary : C.surface,
+          color: val === v ? '#fff' : C.textMid,
+          fontSize: 14, fontWeight: 600, fontFamily: font,
+        }}>{v}</button>
+      ))}
+    </div>
+    {error && <div style={{ fontSize: 12, color: C.high, marginTop: 5, fontFamily: font }}>⚠ {error}</div>}
   </div>
 );
 
@@ -122,31 +151,167 @@ export default function AllHoursApp() {
 
   const validate = () => {
     const e = {};
+
     if (step === 1) {
-      if (!form.fullName.trim()) e.fullName = 'Required';
-      if (!form.address.trim()) e.address = 'Required';
-      if (!form.phone.trim()) e.phone = 'Required';
-      if (!form.email.trim()) e.email = 'Required';
-      if (!form.dob) e.dob = 'Required';
-      if (!form.emergencyContact.trim()) e.emergencyContact = 'Required';
+      if (!form.fullName.trim()) {
+        e.fullName = 'Full name is required';
+      } else if (!hasLetters(form.fullName)) {
+        e.fullName = 'Please enter your real full name';
+      } else if (!hasFirstAndLast(form.fullName)) {
+        e.fullName = 'Please enter both first and last name';
+      }
+
+      if (!form.address.trim()) {
+        e.address = 'Address is required';
+      } else if (!hasLetters(form.address)) {
+        e.address = 'Please enter a valid street address';
+      } else if (form.address.trim().length < 8) {
+        e.address = 'Please enter your full address including city and state';
+      }
+
+      if (!form.phone.trim()) {
+        e.phone = 'Phone number is required';
+      } else if (!isValidPhone(form.phone)) {
+        e.phone = 'Please enter a valid 10-digit phone number';
+      } else if (isAllSameChar(form.phone)) {
+        e.phone = 'Please enter your real phone number';
+      }
+
+      if (!form.email.trim()) {
+        e.email = 'Email address is required';
+      } else if (!isValidEmail(form.email)) {
+        e.email = 'Please enter a valid email address (e.g. name@example.com)';
+      }
+
+      if (!form.dob) {
+        e.dob = 'Date of birth is required';
+      } else if (!isAdult(form.dob)) {
+        e.dob = 'You must be at least 18 years old to apply';
+      }
+
+      if (!form.ssn.trim()) {
+        e.ssn = 'Social Security Number is required';
+      } else if (!isValidSSN(form.ssn)) {
+        e.ssn = 'Please enter a valid SSN format: XXX-XX-XXXX';
+      } else if (isAllSameChar(form.ssn)) {
+        e.ssn = 'Please enter your real Social Security Number';
+      }
+
+      if (!form.emergencyContact.trim()) {
+        e.emergencyContact = 'Emergency contact is required';
+      } else if (!hasLetters(form.emergencyContact)) {
+        e.emergencyContact = 'Please enter a name and phone number for your emergency contact';
+      }
     }
+
     if (step === 2) {
-      if (!form.position) e.position = 'Please select a position';
-      if (!form.legallyEligible) e.legallyEligible = 'Required';
+      if (!form.legallyEligible) e.legallyEligible = 'Please answer this question';
+      if (!form.position) e.position = 'Please select the position you are applying for';
+      if (!form.hoursPerWeek) e.hoursPerWeek = 'Please select how many hours you are available';
+      if (!form.daysAvailable.length) e.daysAvailable = 'Please select at least one day you are available';
+      if (!form.willingToWork.length) e.willingToWork = 'Please select at least one shift type';
     }
+
+    if (step === 3) {
+      if (!form.hasDriversLicense) e.hasDriversLicense = 'Please answer this question';
+      if (!form.reliableTransportation) e.reliableTransportation = 'Please answer this question';
+      if (!form.convicted) e.convicted = 'Please answer this question';
+
+      if (form.hasDriversLicense === 'Yes') {
+        if (!form.licenseNumber.trim()) {
+          e.licenseNumber = 'License number is required';
+        } else if (isAllSameChar(form.licenseNumber)) {
+          e.licenseNumber = 'Please enter a valid license number';
+        }
+        if (!form.licenseState.trim()) {
+          e.licenseState = 'State of issue is required';
+        } else if (form.licenseState.trim().length > 2 && !hasLetters(form.licenseState)) {
+          e.licenseState = 'Please enter a valid state abbreviation (e.g. MA)';
+        }
+        if (!form.licenseType) e.licenseType = 'Please select your license type';
+      }
+
+      if (form.convicted === 'Yes' && !form.convictionDetails.trim()) {
+        e.convictionDetails = 'Please describe the conviction';
+      }
+    }
+
+    if (step === 4) {
+      if (!form.education) e.education = 'Please select your highest level of education';
+      if (!form.currentlyEmployed) e.currentlyEmployed = 'Please answer this question';
+
+      if (form.jobs[0].company.trim()) {
+        if (!form.jobs[0].title.trim()) e.job0title = 'Job title is required for Job 1';
+        if (!form.jobs[0].dates.trim()) e.job0dates = 'Dates of employment are required for Job 1';
+      }
+    }
+
+    if (step === 5) {
+      if (!form.references[0].name.trim()) {
+        e.ref0name = 'At least one reference name is required';
+      } else if (!hasLetters(form.references[0].name)) {
+        e.ref0name = 'Please enter a valid reference name';
+      } else if (!hasFirstAndLast(form.references[0].name)) {
+        e.ref0name = 'Please enter the reference\'s full name';
+      }
+
+      if (!form.references[0].phone.trim()) {
+        e.ref0phone = 'Reference phone number is required';
+      } else if (!isValidPhone(form.references[0].phone)) {
+        e.ref0phone = 'Please enter a valid 10-digit phone number';
+      } else if (isAllSameChar(form.references[0].phone)) {
+        e.ref0phone = 'Please enter a real phone number';
+      }
+
+      if (!form.references[0].address.trim()) {
+        e.ref0address = 'Please enter the reference\'s business or address';
+      }
+
+      if (!form.capableOfJob) e.capableOfJob = 'Please answer this question';
+
+      if (!form.stateLicenses.trim()) {
+        e.stateLicenses = 'Please list your nursing license(s) with state, registration number, and expiration date';
+      } else if (!hasLetters(form.stateLicenses)) {
+        e.stateLicenses = 'Please enter valid license information';
+      }
+    }
+
     if (step === 6) {
-      if (!form.eSignature.trim()) e.eSignature = 'Please type your full name as your e-signature';
-      if (!form.certifyTrue) e.certifyTrue = 'You must certify this information is true';
-      if (!form.authorizeInvestigation) e.authorizeInvestigation = 'Required';
-      if (!form.atWillAgreement) e.atWillAgreement = 'Required';
-      if (!form.applicationPeriod) e.applicationPeriod = 'Required';
+      if (!form.eSignature.trim()) {
+        e.eSignature = 'E-signature is required';
+      } else if (!hasLetters(form.eSignature)) {
+        e.eSignature = 'Please type your full legal name as your signature';
+      } else if (!hasFirstAndLast(form.eSignature)) {
+        e.eSignature = 'Please enter both your first and last name';
+      }
+
+      if (!form.confirmEmail.trim()) {
+        e.confirmEmail = 'Please confirm your email address';
+      } else if (!isValidEmail(form.confirmEmail)) {
+        e.confirmEmail = 'Please enter a valid email address';
+      } else if (form.email && form.confirmEmail.toLowerCase() !== form.email.toLowerCase()) {
+        e.confirmEmail = 'Email address does not match what you entered in Step 1';
+      }
+
+      if (!form.certifyTrue) e.certifyTrue = 'You must certify that this information is true';
+      if (!form.authorizeInvestigation) e.authorizeInvestigation = 'You must authorize this to proceed';
+      if (!form.atWillAgreement) e.atWillAgreement = 'You must acknowledge this to proceed';
+      if (!form.applicationPeriod) e.applicationPeriod = 'You must acknowledge this to proceed';
     }
+
     setErrors(e);
+    if (Object.keys(e).length > 0) {
+      // Scroll to first error
+      setTimeout(() => {
+        const firstError = document.querySelector('[data-error="true"]');
+        if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
     return Object.keys(e).length === 0;
   };
 
   const next = () => { if (validate()) { setStep(s => s + 1); window.scrollTo(0, 0); } };
-  const back = () => { setStep(s => s - 1); window.scrollTo(0, 0); };
+  const back = () => { setStep(s => s - 1); window.scrollTo(0, 0); setErrors({}); };
 
   const submit = async () => {
     if (!validate()) return;
@@ -172,23 +337,26 @@ export default function AllHoursApp() {
 
   if (submitted) return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: font }}>
-      <div style={{ background: C.surface, borderRadius: 20, padding: 40, maxWidth: 420, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,0.1)' }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
-        <h2 style={{ fontSize: 26, color: C.primary, marginBottom: 12 }}>Application Submitted!</h2>
-        <p style={{ color: C.textMid, lineHeight: 1.6, marginBottom: 20 }}>
+      <div style={{ background: C.surface, borderRadius: 20, padding: 40, maxWidth: 480, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,0.1)' }}>
+        <div style={{ width: 80, height: 80, borderRadius: '50%', background: C.lowLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 40 }}>✅</div>
+        <h2 style={{ fontSize: 26, color: C.primary, marginBottom: 12, fontFamily: font }}>Application Submitted!</h2>
+        <p style={{ color: C.textMid, lineHeight: 1.6, marginBottom: 20, fontSize: 15 }}>
           Thank you, <strong>{form.fullName}</strong>. We have received your application and our HR team will be in touch shortly.
         </p>
-        <div style={{ background: C.primaryLight, borderRadius: 12, padding: '14px 16px', fontSize: 13, color: C.textMid }}>
-          Questions? Call us at <strong style={{ color: C.primary }}>(978) 933-7131</strong> or email <strong style={{ color: C.primary }}>HR@allhourshomehealth.com</strong>
+        <div style={{ background: C.primaryLight, borderRadius: 12, padding: '14px 16px', fontSize: 13, color: C.textMid, lineHeight: 1.6 }}>
+          Questions? Call <strong style={{ color: C.primary }}>(978) 933-7131</strong><br />
+          or email <strong style={{ color: C.primary }}>HR@allhourshomehealth.com</strong>
         </div>
       </div>
     </div>
   );
 
+  const errorCount = Object.keys(errors).length;
+
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: font }}>
       {/* Header */}
-      <div style={{ background: C.primary, padding: '16px 20px', position: 'sticky', top: 0, zIndex: 100 }}>
+      <div style={{ background: C.primary, padding: '16px 20px', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,0,0,0.2)' }}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <div>
@@ -208,40 +376,66 @@ export default function AllHoursApp() {
         </div>
       </div>
 
+      {/* Error banner */}
+      {errorCount > 0 && (
+        <div style={{ background: C.highLight, borderBottom: `2px solid ${C.high}`, padding: '10px 20px', textAlign: 'center' }}>
+          <div style={{ maxWidth: 600, margin: '0 auto', fontSize: 13, color: C.high, fontWeight: 600 }}>
+            ⚠ Please fix {errorCount} {errorCount === 1 ? 'error' : 'errors'} below before continuing
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px 100px' }}>
 
         {/* STEP 1 — Personal Info */}
         {step === 1 && (
           <div>
-            <h2 style={{ fontSize: 22, color: C.primary, marginBottom: 4 }}>Personal Information</h2>
-            <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24, lineHeight: 1.5 }}>All information is kept confidential.</p>
+            <h2 style={{ fontSize: 22, color: C.primary, marginBottom: 4, fontFamily: font }}>Personal Information</h2>
+            <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24, lineHeight: 1.5 }}>All information is kept confidential. Fields marked * are required.</p>
 
-            <Field label="Full Name *" error={errors.fullName}>
-              <input value={form.fullName} onChange={e => set('fullName', e.target.value)} placeholder="First and last name" style={inputStyle} />
+            <Field label="Full Name" required error={errors.fullName}>
+              <div data-error={!!errors.fullName}>
+                <input value={form.fullName} onChange={e => { set('fullName', e.target.value); setErrors(p => { const n={...p}; delete n.fullName; return n; }); }}
+                  placeholder="First and last name" style={inputStyle(!!errors.fullName)} />
+              </div>
             </Field>
-            <Field label="Present Address *" error={errors.address}>
-              <input value={form.address} onChange={e => set('address', e.target.value)} placeholder="Street, City, State, ZIP" style={inputStyle} />
+
+            <Field label="Present Address" required error={errors.address}>
+              <input value={form.address} onChange={e => { set('address', e.target.value); setErrors(p => { const n={...p}; delete n.address; return n; }); }}
+                placeholder="Street, City, State, ZIP" style={inputStyle(!!errors.address)} />
             </Field>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Phone Number *" error={errors.phone}>
-                <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="(978) 000-0000" type="tel" style={inputStyle} />
+              <Field label="Phone Number" required error={errors.phone}>
+                <input value={form.phone} onChange={e => { set('phone', e.target.value); setErrors(p => { const n={...p}; delete n.phone; return n; }); }}
+                  placeholder="(978) 000-0000" type="tel" style={inputStyle(!!errors.phone)} />
               </Field>
-              <Field label="Email *" error={errors.email}>
-                <input value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@email.com" type="email" style={inputStyle} />
+              <Field label="Email" required error={errors.email}>
+                <input value={form.email} onChange={e => { set('email', e.target.value); setErrors(p => { const n={...p}; delete n.email; return n; }); }}
+                  placeholder="you@email.com" type="email" style={inputStyle(!!errors.email)} />
               </Field>
             </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Date of Birth *" error={errors.dob}>
-                <input value={form.dob} onChange={e => set('dob', e.target.value)} type="date" style={inputStyle} />
+              <Field label="Date of Birth" required error={errors.dob}>
+                <input value={form.dob} onChange={e => { set('dob', e.target.value); setErrors(p => { const n={...p}; delete n.dob; return n; }); }}
+                  type="date" style={inputStyle(!!errors.dob)} />
               </Field>
-              <Field label="Social Security Number">
-                <input value={form.ssn} onChange={e => set('ssn', e.target.value)} placeholder="XXX-XX-XXXX" style={inputStyle} />
+              <Field label="Social Security Number" required error={errors.ssn}>
+                <input value={form.ssn} onChange={e => { set('ssn', e.target.value); setErrors(p => { const n={...p}; delete n.ssn; return n; }); }}
+                  placeholder="XXX-XX-XXXX" style={inputStyle(!!errors.ssn)} />
               </Field>
             </div>
-            <Field label="Emergency Contact — Name & Phone *" error={errors.emergencyContact}>
-              <input value={form.emergencyContact} onChange={e => set('emergencyContact', e.target.value)} placeholder="Jane Doe — (978) 000-0000" style={inputStyle} />
+
+            <Field label="Emergency Contact — Name & Phone" required error={errors.emergencyContact}>
+              <input value={form.emergencyContact} onChange={e => { set('emergencyContact', e.target.value); setErrors(p => { const n={...p}; delete n.emergencyContact; return n; }); }}
+                placeholder="Jane Doe — (978) 000-0000" style={inputStyle(!!errors.emergencyContact)} />
             </Field>
+
+            <div style={{ background: C.primaryLight, borderRadius: 12, padding: '12px 14px', fontSize: 12, color: C.textMid, lineHeight: 1.6, marginTop: 8 }}>
+              🔒 Your information is encrypted and kept strictly confidential in accordance with applicable privacy laws.
+            </div>
           </div>
         )}
 
@@ -249,21 +443,22 @@ export default function AllHoursApp() {
         {step === 2 && (
           <div>
             <h2 style={{ fontSize: 22, color: C.primary, marginBottom: 4 }}>Position & Availability</h2>
-            <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24 }}>Tell us about the role you're interested in.</p>
+            <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24 }}>Tell us about the role you're interested in and your availability.</p>
 
-            <Field label="Are you legally eligible to work in the US? *" error={errors.legallyEligible}>
-              {yesNo(form.legallyEligible, v => set('legallyEligible', v))}
+            <Field label="Are you legally eligible to work in the US?" required error={errors.legallyEligible}>
+              {yesNo(form.legallyEligible, v => { set('legallyEligible', v); setErrors(p => { const n={...p}; delete n.legallyEligible; return n; }); }, errors.legallyEligible)}
             </Field>
 
-            <Field label="Position Applying For *" error={errors.position}>
+            <Field label="Position Applying For" required error={errors.position}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {POSITIONS.map(p => <Pill key={p} label={p} selected={form.position === p} onClick={() => set('position', p)} />)}
+                {POSITIONS.map(p => <Pill key={p} label={p} selected={form.position === p} onClick={() => { set('position', p); setErrors(prev => { const n={...prev}; delete n.position; return n; }); }} />)}
               </div>
             </Field>
 
             {form.position?.includes('Therapist') && (
               <Field label="Type of Therapy">
-                <input value={form.therapyType} onChange={e => set('therapyType', e.target.value)} placeholder="e.g. Physical, Occupational, Speech…" style={inputStyle} />
+                <input value={form.therapyType} onChange={e => set('therapyType', e.target.value)}
+                  placeholder="e.g. Physical, Occupational, Speech…" style={inputStyle(false)} />
               </Field>
             )}
 
@@ -274,7 +469,8 @@ export default function AllHoursApp() {
             </Field>
 
             <Field label="Salary Desired">
-              <input value={form.salaryDesired} onChange={e => set('salaryDesired', e.target.value)} placeholder="e.g. $30/hr or open" style={inputStyle} />
+              <input value={form.salaryDesired} onChange={e => set('salaryDesired', e.target.value)}
+                placeholder="e.g. $30/hr or open" style={inputStyle(false)} />
             </Field>
 
             <Field label="Languages Fluent In (select all that apply)">
@@ -283,21 +479,21 @@ export default function AllHoursApp() {
               </div>
             </Field>
 
-            <Field label="Hours Available Per Week">
+            <Field label="Hours Available Per Week" required error={errors.hoursPerWeek}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {HOURS.map(h => <Pill key={h} label={h} selected={form.hoursPerWeek === h} onClick={() => set('hoursPerWeek', h)} />)}
+                {HOURS.map(h => <Pill key={h} label={h} selected={form.hoursPerWeek === h} onClick={() => { set('hoursPerWeek', h); setErrors(p => { const n={...p}; delete n.hoursPerWeek; return n; }); }} />)}
               </div>
             </Field>
 
-            <Field label="Willing to Work (select all that apply)">
+            <Field label="Willing to Work" required error={errors.willingToWork}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {SHIFT_TYPES.map(s => <Pill key={s} label={s} selected={form.willingToWork.includes(s)} onClick={() => toggle('willingToWork', s)} />)}
+                {SHIFT_TYPES.map(s => <Pill key={s} label={s} selected={form.willingToWork.includes(s)} onClick={() => { toggle('willingToWork', s); setErrors(p => { const n={...p}; delete n.willingToWork; return n; }); }} />)}
               </div>
             </Field>
 
-            <Field label="Days Available (select all that apply)">
+            <Field label="Days Available" required error={errors.daysAvailable}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {DAYS.map(d => <Pill key={d} label={d} selected={form.daysAvailable.includes(d)} onClick={() => toggle('daysAvailable', d)} />)}
+                {DAYS.map(d => <Pill key={d} label={d} selected={form.daysAvailable.includes(d)} onClick={() => { toggle('daysAvailable', d); setErrors(p => { const n={...p}; delete n.daysAvailable; return n; }); }} />)}
               </div>
             </Field>
 
@@ -325,33 +521,36 @@ export default function AllHoursApp() {
             <h2 style={{ fontSize: 22, color: C.primary, marginBottom: 4 }}>Background & Driving</h2>
             <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24 }}>All responses are handled with confidentiality.</p>
 
-            <Field label="Do you have a valid driver's license?">
-              {yesNo(form.hasDriversLicense, v => set('hasDriversLicense', v))}
+            <Field label="Do you have a valid driver's license?" required>
+              {yesNo(form.hasDriversLicense, v => { set('hasDriversLicense', v); setErrors(p => { const n={...p}; delete n.hasDriversLicense; return n; }); }, errors.hasDriversLicense)}
             </Field>
 
             {form.hasDriversLicense === 'Yes' && (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <Field label="License Number">
-                    <input value={form.licenseNumber} onChange={e => set('licenseNumber', e.target.value)} placeholder="License #" style={inputStyle} />
+                  <Field label="License Number" required error={errors.licenseNumber}>
+                    <input value={form.licenseNumber} onChange={e => { set('licenseNumber', e.target.value); setErrors(p => { const n={...p}; delete n.licenseNumber; return n; }); }}
+                      placeholder="License #" style={inputStyle(!!errors.licenseNumber)} />
                   </Field>
-                  <Field label="State of Issue">
-                    <input value={form.licenseState} onChange={e => set('licenseState', e.target.value)} placeholder="e.g. MA" style={inputStyle} />
+                  <Field label="State of Issue" required error={errors.licenseState}>
+                    <input value={form.licenseState} onChange={e => { set('licenseState', e.target.value); setErrors(p => { const n={...p}; delete n.licenseState; return n; }); }}
+                      placeholder="e.g. MA" maxLength={2} style={inputStyle(!!errors.licenseState)} />
                   </Field>
                 </div>
-                <Field label="License Type">
+                <Field label="License Type" required error={errors.licenseType}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {LICENSE_TYPES.map(t => <Pill key={t} label={t} selected={form.licenseType === t} onClick={() => set('licenseType', t)} />)}
+                    {LICENSE_TYPES.map(t => <Pill key={t} label={t} selected={form.licenseType === t} onClick={() => { set('licenseType', t); setErrors(p => { const n={...p}; delete n.licenseType; return n; }); }} />)}
                   </div>
                 </Field>
                 <Field label="Accident History — Last 3 Years">
-                  <textarea value={form.accidentHistory} onChange={e => set('accidentHistory', e.target.value)} rows={2} placeholder="Describe any accidents or 'None'" style={textareaStyle} />
+                  <textarea value={form.accidentHistory} onChange={e => set('accidentHistory', e.target.value)}
+                    rows={2} placeholder="Describe any accidents, or type 'None'" style={textareaStyle(false)} />
                 </Field>
               </>
             )}
 
-            <Field label="Do you have reliable transportation?">
-              {yesNo(form.reliableTransportation, v => set('reliableTransportation', v))}
+            <Field label="Do you have reliable transportation?" required>
+              {yesNo(form.reliableTransportation, v => { set('reliableTransportation', v); setErrors(p => { const n={...p}; delete n.reliableTransportation; return n; }); }, errors.reliableTransportation)}
             </Field>
 
             <Field label="Have you ever served in the Armed Forces?">
@@ -364,17 +563,23 @@ export default function AllHoursApp() {
                   {yesNo(form.nationalGuard, v => set('nationalGuard', v))}
                 </Field>
                 <Field label="Specialty, date entered, and discharge date">
-                  <textarea value={form.militaryDetails} onChange={e => set('militaryDetails', e.target.value)} rows={2} placeholder="Specialty, entered MM/YYYY, discharged MM/YYYY" style={textareaStyle} />
+                  <textarea value={form.militaryDetails} onChange={e => set('militaryDetails', e.target.value)}
+                    rows={2} placeholder="Specialty, entered MM/YYYY, discharged MM/YYYY" style={textareaStyle(false)} />
                 </Field>
               </>
             )}
 
-            <Field label="Have you been convicted of a crime in the past 5 years that would bar employment at a Home Care agency?">
-              {yesNo(form.convicted, v => set('convicted', v))}
+            <Field label="Have you been convicted of a crime in the past 5 years that would bar employment at a Home Care agency?" required>
+              {yesNo(form.convicted, v => { set('convicted', v); setErrors(p => { const n={...p}; delete n.convicted; return n; }); }, errors.convicted)}
             </Field>
+
             {form.convicted === 'Yes' && (
-              <Field label="Please describe in full (conviction will not necessarily disqualify you)">
-                <textarea value={form.convictionDetails} onChange={e => set('convictionDetails', e.target.value)} rows={3} placeholder="Describe the conviction…" style={textareaStyle} />
+              <Field label="Please describe in full" required error={errors.convictionDetails}>
+                <div style={{ background: C.accentLight, borderRadius: 10, padding: '10px 12px', fontSize: 12, color: C.textMid, marginBottom: 8, lineHeight: 1.5 }}>
+                  Note: A conviction will not necessarily disqualify you from employment. Please be honest and complete.
+                </div>
+                <textarea value={form.convictionDetails} onChange={e => { set('convictionDetails', e.target.value); setErrors(p => { const n={...p}; delete n.convictionDetails; return n; }); }}
+                  rows={3} placeholder="Describe the conviction…" style={textareaStyle(!!errors.convictionDetails)} />
               </Field>
             )}
           </div>
@@ -386,22 +591,25 @@ export default function AllHoursApp() {
             <h2 style={{ fontSize: 22, color: C.primary, marginBottom: 4 }}>Work History & Education</h2>
             <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24 }}>List your most recent jobs first.</p>
 
-            <Field label="Are you currently employed?">
-              {yesNo(form.currentlyEmployed, v => set('currentlyEmployed', v))}
+            <Field label="Are you currently employed?" required>
+              {yesNo(form.currentlyEmployed, v => { set('currentlyEmployed', v); setErrors(p => { const n={...p}; delete n.currentlyEmployed; return n; }); }, errors.currentlyEmployed)}
             </Field>
+
             {form.currentlyEmployed === 'Yes' && (
               <Field label="May we contact your current employer?">
                 {yesNo(form.contactCurrentEmployer, v => set('contactCurrentEmployer', v))}
               </Field>
             )}
 
-            <Field label="Highest Level of Education">
+            <Field label="Highest Level of Education" required error={errors.education}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {EDUCATION.map(e => <Pill key={e} label={e} selected={form.education === e} onClick={() => set('education', e)} />)}
+                {EDUCATION.map(ed => <Pill key={ed} label={ed} selected={form.education === ed} onClick={() => { set('education', ed); setErrors(p => { const n={...p}; delete n.education; return n; }); }} />)}
               </div>
             </Field>
+
             <Field label="Field of Study / Trade">
-              <input value={form.fieldOfStudy} onChange={e => set('fieldOfStudy', e.target.value)} placeholder="e.g. Nursing, Medical Assisting…" style={inputStyle} />
+              <input value={form.fieldOfStudy} onChange={e => set('fieldOfStudy', e.target.value)}
+                placeholder="e.g. Nursing, Medical Assisting…" style={inputStyle(false)} />
             </Field>
 
             {[0, 1, 2].slice(0, jobCount).map(i => (
@@ -410,31 +618,39 @@ export default function AllHoursApp() {
                   {i === 0 ? 'Most Recent Job' : `Previous Job ${i + 1}`}
                 </div>
                 <Field label="Company Name">
-                  <input value={form.jobs[i].company} onChange={e => setJob(i, 'company', e.target.value)} placeholder="Company name" style={inputStyle} />
+                  <input value={form.jobs[i].company} onChange={e => setJob(i, 'company', e.target.value)}
+                    placeholder="Company name" style={inputStyle(false)} />
                 </Field>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <Field label="Company Phone">
-                    <input value={form.jobs[i].phone} onChange={e => setJob(i, 'phone', e.target.value)} placeholder="Phone" style={inputStyle} />
+                    <input value={form.jobs[i].phone} onChange={e => setJob(i, 'phone', e.target.value)}
+                      placeholder="Phone" style={inputStyle(false)} />
                   </Field>
-                  <Field label="Dates of Employment">
-                    <input value={form.jobs[i].dates} onChange={e => setJob(i, 'dates', e.target.value)} placeholder="MM/YYYY – MM/YYYY" style={inputStyle} />
+                  <Field label="Dates of Employment" error={i === 0 ? errors.job0dates : undefined}>
+                    <input value={form.jobs[i].dates} onChange={e => { setJob(i, 'dates', e.target.value); if (i === 0) setErrors(p => { const n={...p}; delete n.job0dates; return n; }); }}
+                      placeholder="MM/YYYY – MM/YYYY" style={inputStyle(i === 0 && !!errors.job0dates)} />
                   </Field>
                 </div>
                 <Field label="Company Address">
-                  <input value={form.jobs[i].address} onChange={e => setJob(i, 'address', e.target.value)} placeholder="Street, City, State" style={inputStyle} />
+                  <input value={form.jobs[i].address} onChange={e => setJob(i, 'address', e.target.value)}
+                    placeholder="Street, City, State" style={inputStyle(false)} />
                 </Field>
-                <Field label="Job Title">
-                  <input value={form.jobs[i].title} onChange={e => setJob(i, 'title', e.target.value)} placeholder="Your role" style={inputStyle} />
+                <Field label="Job Title" error={i === 0 ? errors.job0title : undefined}>
+                  <input value={form.jobs[i].title} onChange={e => { setJob(i, 'title', e.target.value); if (i === 0) setErrors(p => { const n={...p}; delete n.job0title; return n; }); }}
+                    placeholder="Your role" style={inputStyle(i === 0 && !!errors.job0title)} />
                 </Field>
                 <Field label="Description of Work">
-                  <textarea value={form.jobs[i].description} onChange={e => setJob(i, 'description', e.target.value)} rows={2} placeholder="Brief description of responsibilities…" style={textareaStyle} />
+                  <textarea value={form.jobs[i].description} onChange={e => setJob(i, 'description', e.target.value)}
+                    rows={2} placeholder="Brief description of responsibilities…" style={textareaStyle(false)} />
                 </Field>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <Field label="Starting Pay">
-                    <input value={form.jobs[i].startingPay} onChange={e => setJob(i, 'startingPay', e.target.value)} placeholder="e.g. $25/hr" style={inputStyle} />
+                    <input value={form.jobs[i].startingPay} onChange={e => setJob(i, 'startingPay', e.target.value)}
+                      placeholder="e.g. $25/hr" style={inputStyle(false)} />
                   </Field>
                   <Field label="Reason for Leaving">
-                    <input value={form.jobs[i].reasonLeaving} onChange={e => setJob(i, 'reasonLeaving', e.target.value)} placeholder="Reason" style={inputStyle} />
+                    <input value={form.jobs[i].reasonLeaving} onChange={e => setJob(i, 'reasonLeaving', e.target.value)}
+                      placeholder="Reason" style={inputStyle(false)} />
                   </Field>
                 </div>
               </div>
@@ -453,7 +669,8 @@ export default function AllHoursApp() {
             </Field>
             {form.lastNameDifferent === 'Yes' && (
               <Field label="Previous Last Name">
-                <input value={form.previousName} onChange={e => set('previousName', e.target.value)} placeholder="Previous last name" style={inputStyle} />
+                <input value={form.previousName} onChange={e => set('previousName', e.target.value)}
+                  placeholder="Previous last name" style={inputStyle(false)} />
               </Field>
             )}
           </div>
@@ -463,16 +680,25 @@ export default function AllHoursApp() {
         {step === 5 && (
           <div>
             <h2 style={{ fontSize: 22, color: C.primary, marginBottom: 4 }}>References & Licensing</h2>
-            <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24 }}>Professional references preferred.</p>
+            <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24 }}>Professional references preferred. At least one reference is required.</p>
 
             {[0, 1, 2].slice(0, refCount).map(i => (
-              <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16, marginBottom: 16 }}>
+              <div key={i} style={{ background: C.surface, border: `1px solid ${i === 0 && (errors.ref0name || errors.ref0phone || errors.ref0address) ? C.high : C.border}`, borderRadius: 14, padding: 16, marginBottom: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.primary, marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Reference {i + 1}
+                  Reference {i + 1}{i === 0 && <span style={{ color: C.high }}> *</span>}
                 </div>
-                <Field label="Name"><input value={form.references[i].name} onChange={e => setRef(i, 'name', e.target.value)} placeholder="Full name" style={inputStyle} /></Field>
-                <Field label="Business / Address"><input value={form.references[i].address} onChange={e => setRef(i, 'address', e.target.value)} placeholder="Company or address" style={inputStyle} /></Field>
-                <Field label="Phone / Fax"><input value={form.references[i].phone} onChange={e => setRef(i, 'phone', e.target.value)} placeholder="Phone number" style={inputStyle} /></Field>
+                <Field label="Full Name" required={i === 0} error={i === 0 ? errors.ref0name : undefined}>
+                  <input value={form.references[i].name} onChange={e => { setRef(i, 'name', e.target.value); if (i === 0) setErrors(p => { const n={...p}; delete n.ref0name; return n; }); }}
+                    placeholder="Full name" style={inputStyle(i === 0 && !!errors.ref0name)} />
+                </Field>
+                <Field label="Business / Address" required={i === 0} error={i === 0 ? errors.ref0address : undefined}>
+                  <input value={form.references[i].address} onChange={e => { setRef(i, 'address', e.target.value); if (i === 0) setErrors(p => { const n={...p}; delete n.ref0address; return n; }); }}
+                    placeholder="Company name or address" style={inputStyle(i === 0 && !!errors.ref0address)} />
+                </Field>
+                <Field label="Phone Number" required={i === 0} error={i === 0 ? errors.ref0phone : undefined}>
+                  <input value={form.references[i].phone} onChange={e => { setRef(i, 'phone', e.target.value); if (i === 0) setErrors(p => { const n={...p}; delete n.ref0phone; return n; }); }}
+                    placeholder="(978) 000-0000" style={inputStyle(i === 0 && !!errors.ref0phone)} />
+                </Field>
               </div>
             ))}
 
@@ -484,21 +710,30 @@ export default function AllHoursApp() {
               }}>+ Add Another Reference</button>
             )}
 
-            <Field label="Are you capable of performing the job as described?">
-              {yesNo(form.capableOfJob, v => set('capableOfJob', v))}
+            <Field label="Are you capable of performing the job as described?" required>
+              {yesNo(form.capableOfJob, v => { set('capableOfJob', v); setErrors(p => { const n={...p}; delete n.capableOfJob; return n; }); }, errors.capableOfJob)}
             </Field>
+
             {form.capableOfJob === 'No' && (
               <Field label="Which job requirement can you not meet?">
-                <textarea value={form.jobRequirementCantMeet} onChange={e => set('jobRequirementCantMeet', e.target.value)} rows={2} style={textareaStyle} />
+                <textarea value={form.jobRequirementCantMeet} onChange={e => set('jobRequirementCantMeet', e.target.value)}
+                  rows={2} style={textareaStyle(false)} />
               </Field>
             )}
 
-            <Field label="State Nursing License(s) — List state, registration number, and expiration date">
-              <textarea value={form.stateLicenses} onChange={e => set('stateLicenses', e.target.value)} rows={3} placeholder="e.g. MA — RN #123456 exp 06/2026&#10;NH — RN #789012 exp 12/2026" style={textareaStyle} />
+            <Field label="State Nursing License(s)" required error={errors.stateLicenses}>
+              <div style={{ fontSize: 12, color: C.textMid, marginBottom: 6 }}>
+                List each state with registration number and expiration date
+              </div>
+              <textarea value={form.stateLicenses} onChange={e => { set('stateLicenses', e.target.value); setErrors(p => { const n={...p}; delete n.stateLicenses; return n; }); }}
+                rows={3} placeholder="e.g. MA — RN #123456 exp 06/2026&#10;NH — RN #789012 exp 12/2026"
+                style={textareaStyle(!!errors.stateLicenses)} />
             </Field>
 
             <Field label="Special Skills & Qualifications">
-              <textarea value={form.specialSkills} onChange={e => set('specialSkills', e.target.value)} rows={3} placeholder="Summarize special skills and qualifications from employment or other experience…" style={textareaStyle} />
+              <textarea value={form.specialSkills} onChange={e => set('specialSkills', e.target.value)}
+                rows={3} placeholder="Summarize special skills and qualifications from employment or other experience…"
+                style={textareaStyle(false)} />
             </Field>
           </div>
         )}
@@ -507,40 +742,47 @@ export default function AllHoursApp() {
         {step === 6 && (
           <div>
             <h2 style={{ fontSize: 22, color: C.primary, marginBottom: 4 }}>Legal & E-Signature</h2>
-            <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24 }}>Please read and acknowledge each statement below.</p>
+            <p style={{ fontSize: 14, color: C.textMid, marginBottom: 24 }}>Please read and acknowledge each statement below to complete your application.</p>
 
             {[
-              { key: 'certifyTrue', text: 'I certify that the facts contained in this application are true and complete to the best of my knowledge, and understand that falsified statements shall be grounds for dismissal.', error: errors.certifyTrue },
-              { key: 'authorizeInvestigation', text: 'I authorize complete investigation of all statements contained herein and give full permission for the Agency to contact all persons and entities listed to discuss my background and history.', error: errors.authorizeInvestigation },
-              { key: 'atWillAgreement', text: 'I understand that if hired, my employment is for no definite period and may be terminated at any time for any lawful reason, without prior notice and with or without cause.', error: errors.atWillAgreement },
-              { key: 'applicationPeriod', text: 'I understand this application is active for 45 days. If I wish to be considered beyond this period, I must reapply.', error: errors.applicationPeriod },
-            ].map(({ key, text, error }) => (
-              <div key={key} style={{ background: C.surface, border: `1px solid ${error ? C.high : C.border}`, borderRadius: 12, padding: 14, marginBottom: 12 }}>
+              { key: 'certifyTrue', text: 'I certify that the facts contained in this application are true and complete to the best of my knowledge, and understand that falsified statements shall be grounds for dismissal.' },
+              { key: 'authorizeInvestigation', text: 'I authorize complete investigation of all statements contained herein and give full permission for the Agency to contact all persons and entities listed to discuss my background and history.' },
+              { key: 'atWillAgreement', text: 'I understand that if hired, my employment is for no definite period and may be terminated at any time for any lawful reason, without prior notice and with or without cause.' },
+              { key: 'applicationPeriod', text: 'I understand this application is active for 45 days. If I wish to be considered beyond this period, I must reapply.' },
+            ].map(({ key, text }) => (
+              <div key={key} style={{
+                background: form[key] ? C.lowLight : C.surface,
+                border: `1.5px solid ${errors[key] ? C.high : form[key] ? C.low : C.border}`,
+                borderRadius: 12, padding: 14, marginBottom: 12, transition: 'all 0.2s'
+              }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                  <button type="button" onClick={() => set(key, !form[key])} style={{
+                  <button type="button" onClick={() => { set(key, !form[key]); setErrors(p => { const n={...p}; delete n[key]; return n; }); }} style={{
                     width: 24, height: 24, borderRadius: 6, flexShrink: 0, marginTop: 2,
-                    border: `2px solid ${form[key] ? C.primary : C.border}`,
-                    background: form[key] ? C.primary : C.surface,
+                    border: `2px solid ${form[key] ? C.low : errors[key] ? C.high : C.border}`,
+                    background: form[key] ? C.low : C.surface,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {form[key] && <span style={{ color: '#fff', fontSize: 14 }}>✓</span>}
                   </button>
                   <span style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, fontFamily: font }}>{text}</span>
                 </div>
-                {error && <div style={{ fontSize: 12, color: C.high, marginTop: 6, paddingLeft: 36 }}>{error}</div>}
+                {errors[key] && <div style={{ fontSize: 12, color: C.high, marginTop: 6, paddingLeft: 36 }}>⚠ {errors[key]}</div>}
               </div>
             ))}
 
-            <Field label="E-Signature — Type your full legal name *" error={errors.eSignature}>
-              <input value={form.eSignature} onChange={e => set('eSignature', e.target.value)} placeholder="Your full legal name" style={{ ...inputStyle, fontStyle: 'italic', fontSize: 16 }} />
+            <Field label="E-Signature — Type your full legal name" required error={errors.eSignature}>
+              <input value={form.eSignature} onChange={e => { set('eSignature', e.target.value); setErrors(p => { const n={...p}; delete n.eSignature; return n; }); }}
+                placeholder="First and last name" style={{ ...inputStyle(!!errors.eSignature), fontStyle: 'italic', fontSize: 16 }} />
+              <div style={{ fontSize: 11, color: C.textLight, marginTop: 4 }}>By typing your name you are providing a legally binding electronic signature</div>
             </Field>
 
-            <Field label="Confirm Your Email Address">
-              <input value={form.confirmEmail} onChange={e => set('confirmEmail', e.target.value)} placeholder="Email address" type="email" style={inputStyle} />
+            <Field label="Confirm Your Email Address" required error={errors.confirmEmail}>
+              <input value={form.confirmEmail} onChange={e => { set('confirmEmail', e.target.value); setErrors(p => { const n={...p}; delete n.confirmEmail; return n; }); }}
+                placeholder="Must match email from Step 1" type="email" style={inputStyle(!!errors.confirmEmail)} />
             </Field>
 
             <div style={{ background: C.primaryLight, borderRadius: 12, padding: '12px 14px', fontSize: 12, color: C.textMid, marginBottom: 16, lineHeight: 1.6 }}>
-              By submitting this form you attest that all information is true and correct, and you acknowledge you have read and understood all statements above.
+              By submitting this form you attest that all information is true and correct, and you acknowledge you have read and understood all statements above. This application shall be considered active for 45 days.
             </div>
 
             {submitError && (
