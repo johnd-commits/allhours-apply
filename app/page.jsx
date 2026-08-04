@@ -423,8 +423,20 @@ export default function AllHoursApp() {
                   type="date" style={inputStyle(!!errors.dob)} />
               </Field>
               <Field label="Social Security Number" required error={errors.ssn}>
-                <input value={form.ssn} onChange={e => { set('ssn', e.target.value); setErrors(p => { const n={...p}; delete n.ssn; return n; }); }}
-                  placeholder="XXX-XX-XXXX" style={inputStyle(!!errors.ssn)} />
+                <input
+                  value={form.ssn}
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                    let formatted = digits;
+                    if (digits.length > 5) formatted = `${digits.slice(0,3)}-${digits.slice(3,5)}-${digits.slice(5)}`;
+                    else if (digits.length > 3) formatted = `${digits.slice(0,3)}-${digits.slice(3)}`;
+                    set('ssn', formatted);
+                    setErrors(p => { const n={...p}; delete n.ssn; return n; });
+                  }}
+                  placeholder="XXX-XX-XXXX"
+                  maxLength={11}
+                  style={inputStyle(!!errors.ssn)}
+                />
               </Field>
             </div>
 
