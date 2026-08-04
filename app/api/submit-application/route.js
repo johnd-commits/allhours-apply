@@ -28,93 +28,55 @@ async function appendToSheet(f) {
   const sheets = google.sheets({ version: 'v4', auth });
 
   const row = [
-    getTimestamp(),                                                    // Timestamp
-    f.fullName,                                                        // Full Name
-    f.dateOfApplication,                                               // Date of Application
-    f.address,                                                         // Present Address
-    f.phone,                                                           // Phone Number
-    f.email,                                                           // E-mail
-    f.ssn,                                                             // Social Security Number
-    f.dob,                                                             // Date of Birth
-    f.emergencyContact,                                                // Emergency Contact
-    f.appliedBefore,                                                   // Applied Before
-    f.legallyEligible,                                                 // Legally Eligible
-    Array.isArray(f.languages) ? f.languages.join(', ') : f.languages,// Languages
-    f.hoursPerWeek,                                                    // Hours Per Week
-    Array.isArray(f.willingToWork) ? f.willingToWork.join(', ') : '',  // Willing to Work
-    Array.isArray(f.daysAvailable) ? f.daysAvailable.join(', ') : '',  // Days Available
-    f.position,                                                        // Position
-    f.therapyType,                                                     // Therapy Type
-    f.salaryDesired,                                                   // Salary Desired
-    Array.isArray(f.officeSkills) ? f.officeSkills.join(', ') : '',    // Office Skills
-    f.hasDriversLicense,                                               // Driver's License
-    f.licenseNumber,                                                   // License Number
-    f.licenseState,                                                    // License State
-    f.licenseType,                                                     // License Type
-    f.accidentHistory,                                                 // Accident History
-    f.armedForces,                                                     // Armed Forces
-    f.nationalGuard,                                                   // National Guard
-    f.militaryDetails,                                                 // Military Details
-    f.howDidYouHear,                                                   // How Did You Hear
-    f.education,                                                       // Education Level
-    f.fieldOfStudy,                                                    // Field of Study
-    f.contactCurrentEmployer,                                          // Contact Current Employer
-    f.jobs?.[0]?.company,                                              // Job 1 Company
-    f.jobs?.[0]?.phone,                                                // Job 1 Phone
-    f.jobs?.[0]?.address,                                              // Job 1 Address
-    f.jobs?.[0]?.dates,                                                // Job 1 Dates
-    f.jobs?.[0]?.title,                                                // Job 1 Title
-    f.jobs?.[0]?.description,                                          // Job 1 Description
-    f.jobs?.[0]?.startingPay,                                          // Job 1 Starting Pay
-    f.jobs?.[0]?.reasonLeaving,                                        // Job 1 Reason Leaving
-    f.jobs?.[1]?.company,                                              // Job 2 Company
-    f.jobs?.[1]?.phone,                                                // Job 2 Phone
-    f.jobs?.[1]?.address,                                              // Job 2 Address
-    f.jobs?.[1]?.dates,                                                // Job 2 Dates
-    f.jobs?.[1]?.title,                                                // Job 2 Title
-    f.jobs?.[1]?.description,                                          // Job 2 Description
-    f.jobs?.[1]?.reasonLeaving,                                        // Job 2 Reason Leaving
-    f.jobs?.[1]?.startingPay,                                          // Job 2 Starting Pay
-    f.jobs?.[2]?.company,                                              // Job 3 Company
-    f.jobs?.[2]?.phone,                                                // Job 3 Phone
-    f.jobs?.[2]?.address,                                              // Job 3 Address
-    f.jobs?.[2]?.dates,                                                // Job 3 Dates
-    f.jobs?.[2]?.title,                                                // Job 3 Title
-    f.jobs?.[2]?.description,                                          // Job 3 Description
-    f.jobs?.[2]?.reasonLeaving,                                        // Job 3 Reason Leaving
-    f.jobs?.[2]?.startingPay,                                          // Job 3 Starting Pay
-    f.lastNameDifferent,                                               // Last Name Different
-    f.currentlyEmployed,                                               // Currently Employed
-    f.reliableTransportation,                                          // Reliable Transportation
-    f.convicted,                                                       // Convicted
-    f.capableOfJob,                                                    // Capable of Job
-    f.previousName,                                                    // Previous Name
-    f.convictionDetails,                                               // Conviction Details
-    f.jobRequirementCantMeet,                                          // Job Requirement Can't Meet
-    f.references?.[0]?.name,                                           // Ref 1 Name
-    f.references?.[0]?.address,                                        // Ref 1 Address
-    f.references?.[0]?.phone,                                          // Ref 1 Phone
-    f.references?.[1]?.name,                                           // Ref 2 Name
-    f.references?.[1]?.address,                                        // Ref 2 Address
-    f.references?.[1]?.phone,                                          // Ref 2 Phone
-    f.references?.[2]?.name,                                           // Ref 3 Name
-    f.references?.[2]?.address,                                        // Ref 3 Address
-    f.references?.[2]?.phone,                                          // Ref 3 Phone
-    f.stateLicenses,                                                   // State Licenses
-    f.specialSkills,                                                   // Special Skills
-    f.certifyTrue ? 'Yes' : 'No',                                      // Certify True
-    f.authorizeInvestigation ? 'Yes' : 'No',                           // Authorize Investigation
-    f.atWillAgreement ? 'Yes' : 'No',                                  // At Will Agreement
-    f.applicationPeriod ? 'Yes' : 'No',                                // Application Period
-    f.date,                                                            // Date
-    f.eSignature,                                                      // E-Signature
-    f.confirmEmail,                                                    // Confirm Email
-    Array.isArray(f.credentials) ? f.credentials.join(', ') : '',      // Credentials
+    getTimestamp(),                                                              // Timestamp
+    f.firstName,                                                                 // First Name
+    f.lastName,                                                                  // Last Name
+    f.dateOfApplication,                                                         // Date of Application
+    f.phone,                                                                     // Phone Number
+    f.email,                                                                     // Email
+    f.address,                                                                   // Present Address
+    f.dob,                                                                       // Date of Birth
+    f.ssn,                                                                       // Social Security Number
+    f.emergencyContact,                                                          // Emergency Contact Name
+    f.emergencyContactPhone,                                                     // Emergency Contact Phone
+    f.position,                                                                  // Position
+    Array.isArray(f.credentials) ? f.credentials.join(', ') : '',               // Credentials
+    f.hoursPerWeek,                                                              // Hours Per Week
+    Array.isArray(f.willingToWork) ? f.willingToWork.join(', ') : '',           // Shift Types
+    Array.isArray(f.daysAvailable) ? f.daysAvailable.join(', ') : '',           // Days Available
+    f.salaryDesired,                                                             // Salary Desired
+    f.howDidYouHear,                                                             // How Did You Hear
+    f.legallyEligible,                                                           // Legally Eligible
+    f.appliedBefore,                                                             // Applied Before
+    f.hasDriversLicense,                                                         // Has Driver's License
+    f.licenseNumber,                                                             // License Number
+    f.licenseState,                                                              // License State
+    f.licenseType,                                                               // License Type
+    f.reliableTransportation,                                                    // Reliable Transportation
+    f.convicted,                                                                 // Convicted
+    f.convictionDetails,                                                         // Conviction Details
+    f.currentlyEmployed,                                                         // Currently Employed
+    f.education,                                                                 // Education Level
+    f.jobs?.[0]?.company,                                                        // Job 1 Company
+    f.jobs?.[0]?.title,                                                          // Job 1 Title
+    f.jobs?.[0]?.dates,                                                          // Job 1 Dates
+    f.jobs?.[0]?.reasonLeaving,                                                  // Job 1 Reason Leaving
+    f.jobs?.[1]?.company,                                                        // Job 2 Company
+    f.jobs?.[1]?.title,                                                          // Job 2 Title
+    f.jobs?.[1]?.dates,                                                          // Job 2 Dates
+    f.jobs?.[1]?.reasonLeaving,                                                  // Job 2 Reason Leaving
+    f.references?.[0]?.name,                                                     // Reference 1 Name
+    f.references?.[0]?.phone,                                                    // Reference 1 Phone
+    f.stateLicenses,                                                             // State Licenses
+    f.eSignature,                                                                // E-Signature
+    f.date,                                                                      // Signature Date
+    (f.certifyTrue && f.authorizeInvestigation && f.atWillAgreement && f.applicationPeriod) ? 'Yes' : 'No', // Agreed to Terms
+    f.confirmEmail,                                                              // Confirm Email
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
-    range: 'Form Responses 1!A1',
+    range: 'Applications!A1',
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [row] },
   });
@@ -143,22 +105,23 @@ function buildEmailHtml(f) {
       <div style="padding:0 0 24px;background:#fff;border:1px solid #ddd;border-radius:0 0 10px 10px;">
 
         ${section('Personal Information', [
-          ['Full Name', f.fullName],
+          ['First Name', f.firstName],
+          ['Last Name', f.lastName],
           ['Date of Application', f.dateOfApplication],
           ['Present Address', f.address],
           ['Phone', f.phone],
           ['Email', f.email],
-          ['SSN', f.ssn],
           ['Date of Birth', f.dob],
-          ['Emergency Contact', f.emergencyContact],
+          ['SSN', f.ssn],
+          ['Emergency Contact Name', f.emergencyContact],
+          ['Emergency Contact Phone', f.emergencyContactPhone],
         ])}
 
         ${section('Position & Availability', [
           ['Position', f.position],
-          ['Therapy Type', f.therapyType],
-          ['Credentials', Array.isArray(f.credentials) ? f.credentials.join(', ') : f.credentials],
+          ['Credentials', Array.isArray(f.credentials) ? f.credentials.join(', ') : ''],
           ['Salary Desired', f.salaryDesired],
-          ['Languages', Array.isArray(f.languages) ? f.languages.join(', ') : f.languages],
+          ['Languages', Array.isArray(f.languages) ? f.languages.join(', ') : ''],
           ['Hours/Week', f.hoursPerWeek],
           ['Shift Types', Array.isArray(f.willingToWork) ? f.willingToWork.join(', ') : ''],
           ['Days Available', Array.isArray(f.daysAvailable) ? f.daysAvailable.join(', ') : ''],
@@ -187,7 +150,7 @@ function buildEmailHtml(f) {
           ['Contact Current Employer', f.contactCurrentEmployer],
           ['Education', f.education],
           ['Field of Study', f.fieldOfStudy],
-          ['Previous Name', f.previousName],
+          ['Previous Last Name', f.previousName],
         ])}
 
         ${[0, 1, 2].filter(i => f.jobs?.[i]?.company).map(i => section(`Job ${i + 1}`, [
@@ -215,12 +178,9 @@ function buildEmailHtml(f) {
         ])).join('')}
 
         ${section('Legal & Signature', [
-          ['Certify True', f.certifyTrue ? 'Yes — agreed' : 'No'],
-          ['Authorize Investigation', f.authorizeInvestigation ? 'Yes — agreed' : 'No'],
-          ['At-Will Agreement', f.atWillAgreement ? 'Yes — agreed' : 'No'],
-          ['45-Day Period', f.applicationPeriod ? 'Yes — agreed' : 'No'],
+          ['Agreed to All Terms', (f.certifyTrue && f.authorizeInvestigation && f.atWillAgreement && f.applicationPeriod) ? 'Yes' : 'No'],
           ['E-Signature', f.eSignature],
-          ['Date', f.date],
+          ['Signature Date', f.date],
           ['Confirm Email', f.confirmEmail],
         ])}
 
@@ -242,7 +202,7 @@ export async function POST(req) {
         from: 'Applications <onboarding@resend.dev>',
         to: process.env.HR_EMAIL,
         replyTo: f.email,
-        subject: `New Application: ${f.fullName} — ${f.position || 'Position not specified'}`,
+        subject: `New Application: ${f.firstName} ${f.lastName} — ${f.position || 'Position not specified'}`,
         html: buildEmailHtml(f),
       }),
     ]);
